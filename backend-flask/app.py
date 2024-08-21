@@ -21,6 +21,10 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+# x-ray ----
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
+
 # honeycomb -- Initialize tracing and an exporter that can send data to Honeycomb
 provider = TracerProvider()
 processor = BatchSpanProcessor(OTLPSpanExporter())
@@ -34,6 +38,11 @@ app = Flask(__name__)
 FlaskInstrumentor().instrument_app(app)
 RequestsInstrumentor().instrument()
 # --
+# x-ray ----
+xray_url = os.getenv("AWS_XRAY_URL")
+xray_recorder.configure(service='backend-flask', dynamic_naming=xray_url)
+XRayMiddleware(app, xray_recorder)
+# ----
 frontend = os.getenv('FRONTEND_URL')
 backend = os.getenv('BACKEND_URL')
 origins = [frontend, backend]
@@ -64,7 +73,6 @@ def data_messages(handle):
     return model['errors'], 422
   else:
     return model['data'], 200
-  return
 
 @app.route("/api/messages", methods=['POST','OPTIONS'])
 @cross_origin()
@@ -78,7 +86,6 @@ def data_create_message():
     return model['errors'], 422
   else:
     return model['data'], 200
-  return
 
 @app.route("/api/activities/home", methods=['GET'])
 def data_home():
@@ -106,7 +113,6 @@ def data_search():
     return model['errors'], 422
   else:
     return model['data'], 200
-  return
 
 @app.route("/api/activities", methods=['POST','OPTIONS'])
 @cross_origin()
@@ -119,7 +125,6 @@ def data_activities():
     return model['errors'], 422
   else:
     return model['data'], 200
-  return
 
 @app.route("/api/activities/<string:activity_uuid>", methods=['GET'])
 def data_show_activity(activity_uuid):
@@ -136,7 +141,6 @@ def data_activities_reply(activity_uuid):
     return model['errors'], 422
   else:
     return model['data'], 200
-  return
 
 if __name__ == "__main__":
   app.run(debug=True)
