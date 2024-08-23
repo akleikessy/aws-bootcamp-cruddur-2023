@@ -28,7 +28,9 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 # for cloudwatch logs
 #import watchtower
 #import logging
-#from time import strftime
+from flask import got_request_exception
+from time import strftime
+
 
 # Configuring Logger to Use CloudWatch
 #LOGGER = logging.getLogger(__name__)
@@ -56,6 +58,8 @@ RequestsInstrumentor().instrument()
 #xray_recorder.configure(service='backend-flask', dynamic_naming=xray_url)
 #XRayMiddleware(app, xray_recorder)
 # ----
+
+
 frontend = os.getenv('FRONTEND_URL')
 backend = os.getenv('BACKEND_URL')
 origins = [frontend, backend]
@@ -72,6 +76,85 @@ cors = CORS(
 #    timestamp = strftime('[%Y-%b-%d %H:%M]')
 #    LOGGER.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)
 #    return response
+
+# rollbar
+## XXX hack to make request data work with pyrollbar <= 0.16.3
+
+#def _get_flask_request():
+#    print("Getting flask request")
+#    from flask import request
+#    print("request:", request)
+#    return request
+#rollbar._get_flask_request = _get_flask_request
+
+#def _build_request_data(request):
+#    return rollbar._build_werkzeug_request_data(request)
+#rollbar._build_request_data = _build_request_data
+## XXX end hack
+
+#def init_rollbar(app):
+#  rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+#  flask_env = os.getenv('FLASK_ENV')
+#  rollbar.init(
+#      # access token
+#      rollbar_access_token,
+#      # environment name
+#      flask_env,
+#      # server root directory, makes tracebacks prettier
+#      root=os.path.dirname(os.path.realpath(__file__)),
+#      # flask already sets up logging
+#      allow_logging_basic_config=False)
+#  # send exceptions from `app` to rollbar, using flask's signal system.
+#  got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+#  return rollbar
+
+#rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+#@app.before_first_request
+#def init_rollbar():
+#    """init rollbar module"""
+#    rollbar.init(
+#        # access token
+#        rollbar_access_token,
+#        # environment name
+#        'production',
+#        # server root directory, makes tracebacks prettier
+#        root=os.path.dirname(os.path.realpath(__file__)),
+#        # flask already sets up logging
+#        allow_logging_basic_config=False)
+#
+#    # send exceptions from `app` to rollbar, using flask's signal system.
+#    got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+# ----
+# Rollbar
+# rollbar
+import os
+import rollbar
+import rollbar.contrib.flask
+from flask import got_request_exception
+#
+#
+rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+with app.app_context():
+    """init rollbar module"""
+    rollbar.init(
+        # access token
+        rollbar_access_token,
+        # environment name - any string, like 'production' or 'development'
+        'flasktest',
+        # server root directory, makes tracebacks prettier
+        root=os.path.dirname(os.path.realpath(__file__)),
+        # flask already sets up logging
+        allow_logging_basic_config=False)
+
+    # send exceptions from `app` to rollbar, using flask's signal system.
+    got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+
+## Rollbar Simple flask app
+
+@app.route('/rollbar/test')
+def rollbar_test():
+    rollbar.report_message('Hello World!', 'warning')
+    return "Hello World!"
 
 @app.route("/api/message_groups", methods=['GET'])
 def data_message_groups():
@@ -145,10 +228,10 @@ def data_activities():
   else:
     return model['data'], 200
 
-@app.route("/api/activities/<string:activity_uuid>", methods=['GET'])
-def data_show_activity(activity_uuid):
-  data = ShowActivity.run(activity_uuid=activity_uuid)
-  return data, 200
+#@app.route("/api/activities/<string:activity_uuid>", methods=['GET'])
+#def data_show_activity(activity_uuid):
+#  data = ShowActivity.run(activity_uuid=activity_uuid)
+#  return data, 200
 
 @app.route("/api/activities/<string:activity_uuid>/reply", methods=['POST','OPTIONS'])
 @cross_origin()
