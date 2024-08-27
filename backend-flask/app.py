@@ -27,7 +27,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # for cloudwatch logs
 #import watchtower
-#import logging
+import logging
 from flask import got_request_exception
 from time import strftime
 
@@ -39,6 +39,18 @@ from time import strftime
 #cw_handler = watchtower.CloudWatchLogHandler(log_group='cruddur')
 #LOGGER.addHandler(console_handler)
 #LOGGER.addHandler(cw_handler)
+
+# Configuring Logger to Output to Console
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)  # Set the log level
+# Create console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)  # Set the handler log level
+# Create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+# Add the handlers to the logger
+LOGGER.addHandler(console_handler)
 
 # honeycomb -- Initialize tracing and an exporter that can send data to Honeycomb
 provider = TracerProvider()
@@ -66,8 +78,8 @@ origins = [frontend, backend]
 cors = CORS(
   app, 
   resources={r"/api/*": {"origins": origins}},
-  expose_headers="location,link",
-  allow_headers="content-type,if-modified-since",
+  headers=['Content-Type', 'Authorization'], 
+  expose_headers='Authorization',
   methods="OPTIONS,GET,HEAD,POST"
 )
 
@@ -143,6 +155,9 @@ def data_create_message():
 
 @app.route("/api/activities/home", methods=['GET'])
 def data_home():
+  authorization_header = request.headers.get('Authorization')
+  LOGGER.info('Authorization header received!')
+  LOGGER.info(f'Authorization header: {authorization_header}')
   data = HomeActivities.run()
   return data, 200
 
