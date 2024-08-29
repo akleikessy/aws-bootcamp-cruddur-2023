@@ -5,4 +5,15 @@
 #connection string
 export CONNECTION_URL="postgresql://postgres:password@localhost:5432/cruddur"
 
-export PROD_CONNECTION_URL="postgresql://root:akleibootcamp13@cruddur-db-instance.c18s6gooosmt.us-east-1.rds.amazonaws.com/cruddur"
+export PROD_CONNECTION_URL="postgresql://root:akleibootcamp13@cruddur-db-instance.c18s6gooosmt.us-east-1.rds.amazonaws.com:5432/cruddur"
+
+export DB_SG_ID="sg-0c151b5c93b266c0d"
+
+export DB_SG_RULE_ID="sgr-0fc585fba80609cf5"
+
+export PUBLIC_GITHUB_IP=$(curl ifconfig.me)
+
+
+aws ec2 modify-security-group-rules \
+    --group-id $DB_SG_ID \
+    --security-group-rules "SecurityGroupRuleId=$DB_SG_RULE_ID,SecurityGroupRule={Description=GITHUBPUBLIC,IpProtocol=tcp,FromPort=5432,ToPort=5432,CidrIpv4=$PUBLIC_GITHUB_IP/32}"
